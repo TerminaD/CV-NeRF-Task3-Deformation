@@ -51,11 +51,14 @@ class BlenderDataset(Dataset):
         if self.split == 'train': # create buffer of all rays and rgb data
             self.image_paths = []
             self.poses = []
+            self.times = []
             self.all_rays = []
             self.all_rgbs = []
             for frame in self.meta['frames']:
                 pose = np.array(frame['transform_matrix'])[:3, :4]
                 self.poses += [pose]
+                time=frame['time']
+                self.times+=[time]
                 c2w = torch.FloatTensor(pose)
 
                 image_path = os.path.join(self.root_dir, f"{frame['file_path']}.png")
@@ -87,11 +90,13 @@ class BlenderDataset(Dataset):
     def __getitem__(self, idx):
         if self.split == 'train': # use data in the buffers
             sample = {'rays': self.all_rays[idx],
-                      'rgbs': self.all_rgbs[idx]}
+                      'rgbs': self.all_rgbs[idx],
+                      'time': self.times[idx]}
 
         else: # create data for each image separately
             frame = self.meta['frames'][idx]
             c2w = torch.FloatTensor(frame['transform_matrix'])[:3, :4]
+            time=frame['time']
 
             img = Image.open(os.path.join(self.root_dir, f"{frame['file_path']}.png"))
             img = img.resize(self.img_wh, Image.LANCZOS)
@@ -110,6 +115,7 @@ class BlenderDataset(Dataset):
             sample = {'rays': rays,
                       'rgbs': img,
                       'c2w': c2w,
+                      'time': time,
                       'valid_mask': valid_mask}
 
         return sample
