@@ -177,7 +177,6 @@ class D_NeRF(nn.Module):
         xyzs, dirs = torch.split(x, [self.in_channels_xyz, self.in_channels_dir], dim=-1)
         t = ts[0]
 
-        # assert len(torch.unique(t[:, :1])) == 1, "Only accepts all points from same time"
         cur_time = t[0, 0]
         if cur_time == 0. :
             dx = torch.zeros_like(xyzs[:, :3])
