@@ -177,6 +177,7 @@ class D_NeRF(nn.Module):
         xyzs, dirs = torch.split(x, [self.in_channels_xyz, self.in_channels_dir], dim=-1)
         t = ts[0]
 
+        # time layer, calculate dx to original scene
         cur_time = t[0, 0]
         if cur_time == 0. :
             dx = torch.zeros_like(xyzs[:, :3])
@@ -193,6 +194,7 @@ class D_NeRF(nn.Module):
         dir_encoded = torch.repeat_interleave(dir_encoded, sample_num, dim=0) # (ray_num * sample_num) * (6 * dir_L)
         xyz_dir_encoded = torch.cat((xyz_encoded, dir_encoded), dim=1)
 
+        # canonical layer
         out = self.canonical_net(xyz_dir_encoded)
         return out, dx
 
