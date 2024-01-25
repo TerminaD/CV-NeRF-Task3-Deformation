@@ -1,9 +1,33 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from utils.positional_encoding import PositionalEncoding
+# from utils.positional_encoding import PositionalEncoding
 
-class original_NeRF(nn.module):
+class PositionalEncoding(torch.nn.Module):
+    def __init__(self, l):
+        """
+        Input:
+            l: number
+        """
+        super().__init__()
+        self.N_freqs = l
+        self.funcs = [torch.sin, torch.cos]
+        self.freq_bands = (2.0 ** torch.arange(l)) * torch.pi
+
+    def forward(self, x):
+        """
+        Input:
+            x: tensor
+        Output: tensor(x.size() * 2l, )
+        """
+        out = []
+        for freq in self.freq_bands:
+            for func in self.funcs:
+                out += [func(freq*x)]
+
+        return torch.cat(out, -1)
+
+class original_NeRF(nn.Module):
     """
     The neural network for NeRF.
     
@@ -99,55 +123,6 @@ class original_NeRF(nn.module):
         out = torch.cat([rgb, sigma], -1)
 
         return out
-    
-'''
-class D_NeRF(nn.module):
-    def __init__(self,
-                 D=8,
-                 W=256,
-                 in_channels_xyz=60, 
-                 in_channels_dir=24,
-                 in_channels_time=4,
-                 skips=[4],
-                 ):
-        self.D=D
-        self.W=W
-        self.in_channels_xyz=in_channels_xyz
-        self.in_channels_dir=in_channels_dir
-        self.in_channels_time=in_channels_time
-        self.skips=skips
-        self.canonical_net=original_NeRF(D,W,
-                                         in_channels_xyz,
-                                         in_channels_dir,
-                                         skips)
-
-        # time layer
-        for i in range(D):
-            if i == 0:
-                layer = nn.Linear(in_channels_xyz+in_channels_time, W)
-            elif i in skips:
-                layer = nn.Linear(W+in_channels_xyz+in_channels_time, W)
-            else:
-                layer = nn.Linear(W, W)
-            layer = nn.Sequential(layer, nn.ReLU(True))
-            setattr(self, f"time_fc_{i+1}", layer)
-        self.time_fc_final = nn.Linear(W, W)
-
-    def forward(self,x,ts):
-        input_xyz, input_dir = \
-            torch.split(x, [self.in_channels_xyz, self.in_channels_dir], dim=-1)
-        t=ts[0]
-        cur_time=t[0,0]
-        if cur_time==0. :
-            dx=torch.zeros_like(input_xyz[:,:3])
-        else:
-            xyz_ = input_xyz
-            for i in range(self.D):
-                if i in self.skips:
-                    xyz_ = torch.cat([input_xyz+, xyz_], -1)
-                xyz_ = getattr(self, f"time_fc_{i+1}")(xyz_)
-            dx=self.time_fc_final(xyz_)
-'''    
 
 class D_NeRF(nn.Module):
     def __init__(self,
@@ -199,29 +174,28 @@ class D_NeRF(nn.Module):
         return net_final(h)
 
     def forward(self, x, ts,sample_num):
-        input_pts, input_views = torch.split(x, [self.input_ch, self.input_ch_views], dim=-1)
+        xyzs, dirs = torch.split(x, [self.in_channels_xyz, self.in_channels_dir], dim=-1)
         t = ts[0]
 
-
-        assert len(torch.unique(t[:, :1])) == 1, "Only accepts all points from same time"
+        # assert len(torch.unique(t[:, :1])) == 1, "Only accepts all points from same time"
         cur_time = t[0, 0]
         if cur_time == 0. :
-            dx = torch.zeros_like(input_pts[:, :3])
+            dx = torch.zeros_like(xyzs[:, :3])
         else:
-            dx = self.query_time(input_pts, t, self._time, self._time_out)
+            dx = self.query_time(xyzs, t, self._time, self._time_out)
 
         # encoding pts and views
         xyz_L = int(self.xyz_L)
         dir_L = int(self.dir_L)
         xyz_encoder = PositionalEncoding(xyz_L)
-        xyz_encoded = xyz_encoder(input_pts + dx)	# (ray_num * sample_num) * (6 * xyz_L)
+        xyz_encoded = xyz_encoder(xyzs + dx)	# (ray_num * sample_num) * (6 * xyz_L)
         dir_encoder = PositionalEncoding(dir_L)
-        dir_encoded = dir_encoder(input_views) # ray_num * (6 * dir_L)
+        dir_encoded = dir_encoder(dirs) # ray_num * (6 * dir_L)
         dir_encoded = torch.repeat_interleave(dir_encoded, sample_num, dim=0) # (ray_num * sample_num) * (6 * dir_L)
         xyz_dir_encoded = torch.cat((xyz_encoded, dir_encoded), dim=1)
 
         out = self.canonical_net(xyz_dir_encoded)
         return out, dx
 
-model=D_NeRF()
-print(model)
+# model=D_NeRF()
+# print(model)
