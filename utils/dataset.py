@@ -79,6 +79,7 @@ class BlenderDataset(Dataset):
 
             self.all_rays = torch.cat(self.all_rays, 0) # (len(self.meta['frames])*h*w, 8)
             self.all_rgbs = torch.cat(self.all_rgbs, 0) # (len(self.meta['frames])*h*w, 3)
+            self.times=torch.FloatTensor(self.times)
 
     def __len__(self):
         if self.split == 'train':
@@ -91,7 +92,7 @@ class BlenderDataset(Dataset):
         if self.split == 'train': # use data in the buffers
             sample = {'rays': self.all_rays[idx],
                       'rgbs': self.all_rgbs[idx],
-                      'time': self.times[idx]}
+                      'times': self.times[idx]}
 
         else: # create data for each image separately
             frame = self.meta['frames'][idx]

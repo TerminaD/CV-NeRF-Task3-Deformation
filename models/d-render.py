@@ -7,6 +7,7 @@ from einops import rearrange, repeat
 import torch
 
 def render_rays(rays: torch.Tensor,
+                times: torch.Tensor,
                 sample_num: int,
                 nerf: NeRF,
                 device) -> torch.Tensor:

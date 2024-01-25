@@ -85,69 +85,70 @@ def train() -> None:
     
     trainset = BlenderDataset(root_dir=args.data, split='train')
     print(trainset.__getitem__(1))
-    # trainloader = DataLoader(trainset,
-    #                          shuffle=True,
-    #                          num_workers=8, 
-    #                          batch_size=args.batch_size,
-    #                          pin_memory=True)
-    # testset = BlenderDataset(root_dir=args.data, split='test')
+    trainloader = DataLoader(trainset,
+                             shuffle=True,
+                             num_workers=8, 
+                             batch_size=args.batch_size,
+                             pin_memory=True)
+    testset = BlenderDataset(root_dir=args.data, split='test')
     
-    # model = NeRF(in_channels_xyz=6*args.xyz_L, in_channels_dir=6*args.dir_L)
-    # model.to(device)
-    # optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    # criterion = nn.MSELoss()
+    model = NeRF(in_channels_xyz=6*args.xyz_L, in_channels_dir=6*args.dir_L)
+    model.to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    criterion = nn.MSELoss()
     
-    # os.makedirs(f'checkpoints/{args.ckpt}', exist_ok=True)
-    # os.makedirs(f'renders/{args.ckpt}/train', exist_ok=True)
+    os.makedirs(f'checkpoints/{args.ckpt}', exist_ok=True)
+    os.makedirs(f'renders/{args.ckpt}/train', exist_ok=True)
     
-    # for e in range(args.epoch):
-    #     print(f"epoch:{e}")
-    #     cum_loss = 0.0
+    for e in range(args.epoch):
+        print(f"epoch:{e}")
+        cum_loss = 0.0
         
-    #     for sample in tqdm(trainloader, desc="Training", leave=False):
-    #         rays = sample['rays'].to(device)
-    #         gt_rgbs = sample['rgbs'].to(device)
+        for sample in tqdm(trainloader, desc="Training", leave=False):
+            rays = sample['rays'].to(device)
+            gt_rgbs = sample['rgbs'].to(device)
+            times = sample['times'].to(device)
             
-    #         optimizer.zero_grad()
+            optimizer.zero_grad()
             
-    #         pred_rgbs = render_rays(rays, args.sample_num, model, device)
+            pred_rgbs = render_rays(rays, times, args.sample_num, model, device)
             
-    #         loss = criterion(gt_rgbs, pred_rgbs)
-    #         loss.backward()
-    #         cum_loss += loss
+            loss = criterion(gt_rgbs, pred_rgbs)
+            loss.backward()
+            cum_loss += loss
             
-    #         optimizer.step()
+            optimizer.step()
         
-    #     cum_loss /= len(trainloader)
-    #     writer.add_scalar('Loss/train', cum_loss, e)
-    #     print(cum_loss.item())
+        cum_loss /= len(trainloader)
+        writer.add_scalar('Loss/train', cum_loss, e)
+        print(cum_loss.item())
         
-    #     # Perform testing periodically
-    #     if args.test_in_training and e % args.test_every == 0:
-    #         with torch.no_grad():
-    #             sample = testset[0]
-    #             pred_img = render_image(rays=sample['rays'],
-    #                                     batch_size=args.batch_size,
-    #                                     img_shape=(200, 200),
-    #                                     sample_num=args.sample_num,
-    #                                     nerf=model,
-    #                                     device=device)
-    #             gt_img = sample['rgbs'].reshape(200, 200, 3).to(device)
-    #             print(gt_img)
-    #             print(pred_img)
+        # Perform testing periodically
+        if args.test_in_training and e % args.test_every == 0:
+            with torch.no_grad():
+                sample = testset[0]
+                pred_img = render_image(rays=sample['rays'],
+                                        batch_size=args.batch_size,
+                                        img_shape=(200, 200),
+                                        sample_num=args.sample_num,
+                                        nerf=model,
+                                        device=device)
+                gt_img = sample['rgbs'].reshape(200, 200, 3).to(device)
+                print(gt_img)
+                print(pred_img)
                 
-    #             loss = criterion(gt_img, pred_img)
-    #             psnr = psnr_func(gt_img, pred_img)
+                loss = criterion(gt_img, pred_img)
+                psnr = psnr_func(gt_img, pred_img)
                 
-    #             writer.add_scalar('Loss/test', loss, e)
-    #             writer.add_scalar('PSNR/test', psnr, e)
+                writer.add_scalar('Loss/test', loss, e)
+                writer.add_scalar('PSNR/test', psnr, e)
                 
-    #             torch.save(model.state_dict(), f"checkpoints/{args.ckpt}/{e}.pth")
-    #             plt.imsave(f'renders/{args.ckpt}/train/{e}.png', torch.clip(pred_img, 0, 1).cpu().numpy())
+                torch.save(model.state_dict(), f"checkpoints/{args.ckpt}/{e}.pth")
+                plt.imsave(f'renders/{args.ckpt}/train/{e}.png', torch.clip(pred_img, 0, 1).cpu().numpy())
     
-    # torch.save(model.state_dict(), f"checkpoints/{args.ckpt}/final.pth")           
+    torch.save(model.state_dict(), f"checkpoints/{args.ckpt}/final.pth")           
                 
-    # writer.flush()
+    writer.flush()
     
 
 if __name__ == '__main__':
