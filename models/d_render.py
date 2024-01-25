@@ -16,6 +16,7 @@ def render_rays(rays: torch.Tensor,
     
     Inputs:
         rays: shape [num, 8], rays_o, rays_d, near bound & far bound catenated
+        times: 
         sampling_num: number of points to sample for each ray
         nerf: a pre-trained NeRF neural network
         xyz_L: the L in xyz's positional encoding

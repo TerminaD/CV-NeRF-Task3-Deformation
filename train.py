@@ -84,7 +84,7 @@ def train() -> None:
     print(f"Device is {device}")
     
     trainset = BlenderDataset(root_dir=args.data, split='train')
-    print(trainset.__getitem__(1))
+    # print(trainset.__getitem__(40000-1))
     trainloader = DataLoader(trainset,
                              shuffle=True,
                              num_workers=8, 

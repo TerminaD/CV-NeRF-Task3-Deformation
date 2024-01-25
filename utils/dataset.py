@@ -57,8 +57,11 @@ class BlenderDataset(Dataset):
             for frame in self.meta['frames']:
                 pose = np.array(frame['transform_matrix'])[:3, :4]
                 self.poses += [pose]
+
+                # get time of picture
                 time=frame['time']
-                self.times+=[time]
+                self.times+=[torch.full((h*w,),time)]
+
                 c2w = torch.FloatTensor(pose)
 
                 image_path = os.path.join(self.root_dir, f"{frame['file_path']}.png")
@@ -79,7 +82,7 @@ class BlenderDataset(Dataset):
 
             self.all_rays = torch.cat(self.all_rays, 0) # (len(self.meta['frames])*h*w, 8)
             self.all_rgbs = torch.cat(self.all_rgbs, 0) # (len(self.meta['frames])*h*w, 3)
-            self.times=torch.FloatTensor(self.times)
+            self.times = torch.cat(self.times, 0) 
 
     def __len__(self):
         if self.split == 'train':
