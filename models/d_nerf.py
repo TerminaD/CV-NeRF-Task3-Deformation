@@ -110,6 +110,7 @@ class D_NeRF(nn.Module):
                  in_channels_xyz=3, 
                  in_channels_dir=3,
                  in_channels_time=1,
+                 sample_num=0,
                  skips=[4],
                  xyz_L=10,
                  dir_L=4,
@@ -123,6 +124,7 @@ class D_NeRF(nn.Module):
         self.skips=skips
         self.xyz_L=xyz_L
         self.dir_L=dir_L
+        self.sample_num = sample_num
         self.canonical_net=original_NeRF(D,W,
                                          in_channels_xyz*2*xyz_L,
                                          in_channels_dir*2*dir_L,
@@ -152,7 +154,7 @@ class D_NeRF(nn.Module):
 
         return net_final(h)
 
-    def forward(self, x, ts,sample_num):
+    def forward(self, x, ts):
         xyzs, dirs = torch.split(x, [self.in_channels_xyz, self.in_channels_dir], dim=-1)
         t = ts[0]
 
@@ -170,7 +172,7 @@ class D_NeRF(nn.Module):
         xyz_encoded = xyz_encoder(xyzs + dx)	# (ray_num * sample_num) * (6 * xyz_L)
         dir_encoder = PositionalEncoding(dir_L)
         dir_encoded = dir_encoder(dirs) # ray_num * (6 * dir_L)
-        dir_encoded = torch.repeat_interleave(dir_encoded, sample_num, dim=0) # (ray_num * sample_num) * (6 * dir_L)
+        dir_encoded = torch.repeat_interleave(dir_encoded, self.sample_num, dim=0) # (ray_num * sample_num) * (6 * dir_L)
         xyz_dir_encoded = torch.cat((xyz_encoded, dir_encoded), dim=1)
 
         # canonical layer
