@@ -58,7 +58,7 @@ class BlenderDataset(Dataset):
                 pose = np.array(frame['transform_matrix'])[:3, :4]
                 self.poses += [pose]
 
-                # get time of picture
+                # get time of pictures
                 time=frame['time']
                 self.times+=[torch.full((h*w,),time)]
 
