@@ -1,7 +1,7 @@
 import sys
 sys.path.append('/workspaces/CV-NeRF-Task3-Deformation')
 
-from models.nerf import NeRF
+from models.d_nerf import original_NeRF, D_NeRF
 from utils.positional_encoding import PositionalEncoding
 
 from typing import Tuple
@@ -61,8 +61,8 @@ def render_rays(rays: torch.Tensor,
                 times: torch.Tensor,
                 sample_num_coarse: int,
                 sample_num_fine: int,
-                nerf_coarse: NeRF,
-                nerf_fine: NeRF,
+                nerf_coarse: D_NeRF,
+                nerf_fine: D_NeRF,
                 device):
     """
     Render a number of rays.
@@ -114,7 +114,7 @@ def render_rays(rays: torch.Tensor,
 
     # feed into D-NeRF
     xyz_dir_unencoded_coarse = torch.cat((xyzs_coarse,dir_coarse), dim=1)
-    results_coarse = nerf_coarse(xyz_dir_unencoded_coarse,times_coarse)
+    results_coarse,dx = nerf_coarse(xyz_dir_unencoded_coarse,times_coarse)
     
     # # Encode xyz and direction
     # xyz_L = int(nerf_coarse.in_channels_xyz / 6)
