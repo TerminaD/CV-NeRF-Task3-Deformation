@@ -1,3 +1,6 @@
+import sys
+sys.path.append('/workspaces/CV-NeRF-Task3-Deformation')
+
 from models.nerf import NeRF
 from utils.positional_encoding import PositionalEncoding
 

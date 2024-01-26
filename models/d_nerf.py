@@ -1,3 +1,6 @@
+import sys
+sys.path.append('/workspaces/CV-NeRF-Task3-Deformation')
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -174,5 +177,5 @@ class D_NeRF(nn.Module):
         out = self.canonical_net(xyz_dir_encoded)
         return out, dx
 
-# model=D_NeRF()
-# print(model)
+model=D_NeRF()
+print(model)
