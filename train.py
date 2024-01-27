@@ -24,7 +24,7 @@ def parse_args(debug=False):
         parser.add_argument('-c', '--ckpt', type=str, default='debug4',
                             help='Name of checkpoint to save to. Defaults to timestamp.')
         parser.add_argument('-e', '--epoch', type=int, default=2)
-        parser.add_argument('-b', '--batch_size', type=int, default=16384)
+        parser.add_argument('-b', '--batch_size', type=int, default=64)
         parser.add_argument('--xyz_L', type=int, default=10, 
                             help='Parameter L in positional encoding for xyz.')
         parser.add_argument('--dir_L', type=int, default=4, 
@@ -50,7 +50,7 @@ def parse_args(debug=False):
         parser.add_argument('-c', '--ckpt', type=str, default='debug',
                             help='Name of checkpoint to save to. Defaults to timestamp.')
         parser.add_argument('-e', '--epoch', type=int, default=100)
-        parser.add_argument('-b', '--batch_size', type=int, default=16384)
+        parser.add_argument('-b', '--batch_size', type=int, default=64)
         parser.add_argument('--xyz_L', type=int, default=10, 
                             help='Parameter L in positional encoding for xyz.')
         parser.add_argument('--dir_L', type=int, default=4, 
@@ -138,7 +138,7 @@ def train() -> None:
             
             optimizer.zero_grad()
 
-            pred_img, dx = render_image(rays=rays,
+            pred_img, pred_img_coarse = render_image(rays=rays,
                                     batch_size=args.batch_size,
                                     img_shape=(args.length, args.length),
                                     times=times,
@@ -149,7 +149,8 @@ def train() -> None:
                                     device=device)
             gt_img = sample['rgbs'].reshape(args.length, args.length, 3).to(device)
             
-            loss = mse_criterion(gt_img, pred_img)
+            loss = nerf_criterion(gt_img, pred_img_coarse, pred_img)
+            print(loss)
             loss.backward()
             cum_loss += loss
             

@@ -173,7 +173,7 @@ def render_rays(rays: torch.Tensor,
     # xyz_dir_encoded_all = torch.cat((xyzs_encoded_all, dir_encoded_all), dim=1)
     
     results_all, dx_all = nerf_fine(xyz_dir_unencoded_all, time_all)
-    
+
     # Unpack fine results
     rgbs_all = results_all[:, :3]
     rgbs_all = rearrange(rgbs_all, '(ray sample) rgb -> ray sample rgb', 
@@ -192,8 +192,8 @@ def render_rays(rays: torch.Tensor,
     
     point_rgb_all = repeat(Ts_all * (1 - exps_all), 'ray sample -> ray sample 3') * rgbs_all
     pixel_rgb_all = torch.sum(point_rgb_all, dim=1)
-    
-    return pixel_rgb_all, dx_all
+
+    return pixel_rgb_all, pixel_rgb_coarse
     
     
 @torch.no_grad
@@ -233,9 +233,11 @@ def render_image(rays: torch.Tensor,
     time_batches = torch.split(times, batch_size)
     
     rgb_batches = []
-    dx_batches = []
+    rgb_coarse_batches = []
+    # dx_batches = []
     for ray_batch,time_batch in zip(batches,time_batches):
-        rgb_batch, dx = render_rays(ray_batch, 
+        # print(time_batch)
+        rgb_batch, rgb_coarse_batch = render_rays(ray_batch, 
                                    time_batch,
                                    sample_num_coarse, 
                                    sample_num_fine,
@@ -243,15 +245,17 @@ def render_image(rays: torch.Tensor,
                                    nerf_fine,
                                    device)
         rgb_batches.append(rgb_batch)
-        dx_batches.append(dx)
+        rgb_coarse_batches.append(rgb_coarse_batch)
+        # dx_batches.append(dx)
     last_rgb_batch = rgb_batches.pop()
-    last_dx_batch = dx_batches.pop()
     rgb_batches = torch.cat(rgb_batches, dim=0)
-    dx_batches = torch.cat(dx_batches, dim=0)
     rgb_batches = torch.cat((rgb_batches, last_rgb_batch), dim=0)
-    dx_batches = torch.cat((dx_batches,last_dx_batch), dim=0)
-    
     rgb_batches = rgb_batches.reshape(img_shape[0], img_shape[1], 3)
-    dx_batches = dx_batches.reshape(img_shape[0], img_shape[1] ,3)
 
-    return rgb_batches, dx_batches
+    last_rgb_coarse_batch = rgb_coarse_batches.pop()
+    rgb_coarse_batches = torch.cat(rgb_coarse_batches, dim=0)
+    rgb_coarse_batches = torch.cat((rgb_coarse_batches, last_rgb_coarse_batch), dim=0)
+    rgb_coarse_batches = rgb_coarse_batches.reshape(img_shape[0], img_shape[1], 3)
+
+    print(f"fine shape:{rgb_batches.shape}, coarse shape:{rgb_coarse_batches.shape}")
+    return rgb_batches,rgb_coarse_batches
