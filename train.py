@@ -131,7 +131,7 @@ def train() -> None:
     for e in range(args.epoch):
         print(f"epoch:{e}")
         cum_loss = 0.0
-        for sample in tqdm(trainset, desc="Training", leave=False):
+        for sample in tqdm(trainset,desc="raying",leave=False):
             rays = sample['rays'].to(device)
             # gt_rgbs = sample['rgbs'].to(device)
             times = sample['times'].to(device)
@@ -150,6 +150,7 @@ def train() -> None:
             gt_img = sample['rgbs'].reshape(args.length, args.length, 3).to(device)
             
             loss = nerf_criterion(gt_img, pred_img_coarse, pred_img)
+            loss.requires_grad_(True) 
             print(loss)
             loss.backward()
             cum_loss += loss

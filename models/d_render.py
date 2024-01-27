@@ -5,7 +5,7 @@ from models.d_nerf import original_NeRF, D_NeRF
 from utils.positional_encoding import PositionalEncoding
 
 from typing import Tuple
-
+from tqdm import tqdm
 from einops import rearrange, repeat, reduce
 import torch
 
@@ -235,7 +235,8 @@ def render_image(rays: torch.Tensor,
     rgb_batches = []
     rgb_coarse_batches = []
     # dx_batches = []
-    for ray_batch,time_batch in zip(batches,time_batches):
+    render_set=zip(batches,time_batches)
+    for ray_batch,time_batch in tqdm(render_set,desc="raying",leave=False):
         # print(time_batch)
         rgb_batch, rgb_coarse_batch = render_rays(ray_batch, 
                                    time_batch,
