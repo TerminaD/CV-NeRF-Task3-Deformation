@@ -156,14 +156,13 @@ class D_NeRF(nn.Module):
 
     def forward(self, x, ts):
         xyzs, dirs = torch.split(x, [self.in_channels_xyz, self.in_channels_dir], dim=-1)
-        t = ts[0]
 
         # time layer, calculate dx to original scene
-        cur_time = t[0, 0]
+        cur_time = ts[0, 0]
         if cur_time == 0. :
             dx = torch.zeros_like(xyzs[:, :3])
         else:
-            dx = self.query_time(xyzs, t, self._time, self._time_out)
+            dx = self.query_time(xyzs, ts, self._time, self._time_out)
 
         # encoding pts and views
         xyz_L = int(self.xyz_L)

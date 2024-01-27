@@ -117,14 +117,14 @@ def render_rays(rays: torch.Tensor,
     results_coarse, dx_coarse = nerf_coarse(xyz_dir_unencoded_coarse,times_coarse)
     
     # # Encode xyz and direction
-    xyz_L = int(nerf_coarse.in_channels_xyz / 6)
-    dir_L = int(nerf_coarse.in_channels_dir / 6)
+    # xyz_L = int(nerf_coarse.in_channels_xyz / 6)
+    # dir_L = int(nerf_coarse.in_channels_dir / 6)
     
-    xyz_encoder = PositionalEncoding(xyz_L)
+    # xyz_encoder = PositionalEncoding(xyz_L)
     # xyz_encoded_coarse = xyz_encoder(xyzs_coarse)	# (ray_num * sample_num_coarse) * (6 * xyz_L)
     
-    dir_encoder = PositionalEncoding(dir_L)
-    dir_encoded_base = dir_encoder(rays_d)
+    # dir_encoder = PositionalEncoding(dir_L)
+    # dir_encoded_base = dir_encoder(rays_d)
     # dir_encoded_coarse = torch.repeat_interleave(dir_encoded_base, sample_num_coarse, dim=0) # (ray_num * sample_num_coarse) * (6 * dir_L)
     
     # xyz_dir_encoded_coarse = torch.cat((xyz_encoded_coarse, dir_encoded_coarse), dim=1)
@@ -193,7 +193,7 @@ def render_rays(rays: torch.Tensor,
     point_rgb_all = repeat(Ts_all * (1 - exps_all), 'ray sample -> ray sample 3') * rgbs_all
     pixel_rgb_all = torch.sum(point_rgb_all, dim=1)
     
-    return pixel_rgb_coarse, pixel_rgb_all
+    return pixel_rgb_all, dx_all
     
     
 @torch.no_grad
@@ -203,8 +203,8 @@ def render_image(rays: torch.Tensor,
                  times: torch.Tensor,
                  sample_num_coarse: int,
                  sample_num_fine: int,
-                 nerf_coarse: NeRF,
-                 nerf_fine: NeRF,
+                 nerf_coarse: D_NeRF,
+                 nerf_fine: D_NeRF,
                  device) -> torch.Tensor:
     """
     Renders an image.
@@ -233,8 +233,9 @@ def render_image(rays: torch.Tensor,
     time_batches = torch.split(rays, batch_size)
     
     rgb_batches = []
+    dx_batches = []
     for ray_batch,time_batch in zip(batches,time_batches):
-        _, rgb_batch = render_rays(ray_batch, 
+        rgb_batch, dx = render_rays(ray_batch, 
                                    time_batch,
                                    sample_num_coarse, 
                                    sample_num_fine,
@@ -242,10 +243,15 @@ def render_image(rays: torch.Tensor,
                                    nerf_fine,
                                    device)
         rgb_batches.append(rgb_batch)
+        dx_batches.append(dx)
     last_rgb_batch = rgb_batches.pop()
+    last_dx_batch = dx_batches.pop()
     rgb_batches = torch.cat(rgb_batches, dim=0)
+    dx_batches = torch.cat(dx_batches, dim=0)
     rgb_batches = torch.cat((rgb_batches, last_rgb_batch), dim=0)
+    dx_batches = torch.cat((dx_batches,last_dx_batch), dim=0)
     
     rgb_batches = rgb_batches.reshape(img_shape[0], img_shape[1], 3)
-    
-    return rgb_batches
+    dx_batches = dx_batches.reshape(img_shape[0], img_shape[1] ,3)
+
+    return rgb_batches, dx_batches
