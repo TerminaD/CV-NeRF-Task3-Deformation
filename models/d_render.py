@@ -172,7 +172,7 @@ def render_rays(rays: torch.Tensor,
     # dir_encoded_all = torch.repeat_interleave(dir_encoded_base, sample_num_coarse+sample_num_fine, dim=0) # (ray_num * sample_num_coarse) * (6 * dir_L)
     # xyz_dir_encoded_all = torch.cat((xyzs_encoded_all, dir_encoded_all), dim=1)
     
-    results_all, dx_all = nerf_fine(xyz_dir_unencoded_all, time_all, sigma_only=False)
+    results_all, dx_all = nerf_fine(xyz_dir_unencoded_all, time_all)
     
     # Unpack fine results
     rgbs_all = results_all[:, :3]
