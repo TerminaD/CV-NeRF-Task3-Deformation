@@ -155,6 +155,15 @@ class D_NeRF(nn.Module):
         return net_final(h)
 
     def forward(self, x, ts):
+        '''
+        Inputs:
+            ...
+            ts: time (B,1)
+
+        Outputs:
+            ...
+            dx: relative displacement
+        '''
         xyzs, dirs = torch.split(x, [self.in_channels_xyz, self.in_channels_dir], dim=-1)
 
         # time layer, calculate dx to original scene
