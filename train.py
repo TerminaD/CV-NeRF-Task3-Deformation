@@ -59,7 +59,7 @@ def parse_args(debug=False):
                             help='How many points to sample on each ray for coarse model.')
         parser.add_argument('--sample_num_fine', type=int, default=128, 
                             help='How many points to sample on each ray for fine model.')
-        parser.add_argument('-t', '--test_every', type=int, default=5, 
+        parser.add_argument('-t', '--test_every', type=int, default=1, 
                             help='Performs testing after we\'ve trained for this many epochs.')
         parser.add_argument('--test_in_training', action='store_true',
                             help='Perform testing during training')
@@ -166,7 +166,7 @@ def train() -> None:
             with torch.no_grad():
                 print("Testing...")
                 sample = testset[0]
-                pred_img, dx = render_image(rays=sample['rays'],
+                pred_img, _ = render_image(rays=sample['rays'],
                                         batch_size=args.batch_size,
                                         img_shape=(args.length, args.length),
                                         times=sample['times'],

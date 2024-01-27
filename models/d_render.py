@@ -236,7 +236,7 @@ def render_image(rays: torch.Tensor,
     rgb_coarse_batches = []
     # dx_batches = []
     render_set=zip(batches,time_batches)
-    for ray_batch,time_batch in tqdm(render_set,desc="raying",leave=False):
+    for ray_batch,time_batch in render_set:
         # print(time_batch)
         rgb_batch, rgb_coarse_batch = render_rays(ray_batch, 
                                    time_batch,
