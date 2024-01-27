@@ -19,7 +19,7 @@ from torch.utils.tensorboard import SummaryWriter
 def parse_args(debug=False):
     if debug:
         parser = argparse.ArgumentParser()
-        parser.add_argument('-d', '--data', type=str, default='data/lego_small',
+        parser.add_argument('-d', '--data', type=str, default='data/jumpingjacks_small',
                             help='Path to collection of images to fit NeRF on. Should follow COLMAP format.')
         parser.add_argument('-c', '--ckpt', type=str, default='debug4',
                             help='Name of checkpoint to save to. Defaults to timestamp.')
@@ -45,7 +45,7 @@ def parse_args(debug=False):
         
     else:
         parser = argparse.ArgumentParser()
-        parser.add_argument('-d', '--data', type=str, default='data/lego_small',
+        parser.add_argument('-d', '--data', type=str, default='data/jumpingjacks_small',
                             help='Path to collection of images to fit NeRF on. Should follow COLMAP format.')
         parser.add_argument('-c', '--ckpt', type=str, default='debug',
                             help='Name of checkpoint to save to. Defaults to timestamp.')
@@ -104,8 +104,18 @@ def train() -> None:
                              split='test', 
                              img_wh=(args.length, args.length))
     
-    model_coarse = D_NeRF(in_channels_xyz=6*args.xyz_L, in_channels_dir=6*args.dir_L)
-    model_fine = D_NeRF(in_channels_xyz=6*args.xyz_L, in_channels_dir=6*args.dir_L)
+    model_coarse = D_NeRF(in_channels_xyz=3, 
+                          in_channels_dir=3,
+                          in_channels_time=1,
+                          sample_num=args.sample_num_coarse,
+                          xyz_L=args.xyz_L,
+                          dir_L=args.dir_L)
+    model_fine = D_NeRF(in_channels_xyz=3, 
+                        in_channels_dir=3,
+                        in_channels_time=1,
+                        sample_num=args.sample_num_fine+args.sample_num_coarse,
+                        xyz_L=args.xyz_L,
+                        dir_L=args.dir_L)
     model_coarse.to(device)
     model_fine.to(device)
     
@@ -121,28 +131,30 @@ def train() -> None:
     for e in range(args.epoch):
         print(f"epoch:{e}")
         cum_loss = 0.0
-        
-        for sample in tqdm(trainloader, desc="Training", leave=False):
+        for sample in tqdm(trainset, desc="Training", leave=False):
             rays = sample['rays'].to(device)
-            gt_rgbs = sample['rgbs'].to(device)
-            times = sample['time'].to(device)
+            # gt_rgbs = sample['rgbs'].to(device)
+            times = sample['times'].to(device)
             
             optimizer.zero_grad()
+
+            pred_img, dx = render_image(rays=rays,
+                                    batch_size=args.batch_size,
+                                    img_shape=(args.length, args.length),
+                                    times=times,
+                                    sample_num_coarse=args.sample_num_coarse,
+                                    sample_num_fine=args.sample_num_fine,
+                                    nerf_coarse=model_coarse,
+                                    nerf_fine=model_fine,
+                                    device=device)
+            gt_img = sample['rgbs'].reshape(args.length, args.length, 3).to(device)
             
-            pred_rgbs_coarse, pred_rgbs_fine = render_rays(rays,
-                                                           times,
-                                                           args.sample_num_coarse,
-                                                           args.sample_num_fine,
-                                                           model_coarse,
-                                                           model_fine,
-                                                           device=device)
-            
-            loss = nerf_criterion(gt_rgbs, pred_rgbs_coarse, pred_rgbs_fine)
+            loss = mse_criterion(gt_img, pred_img)
             loss.backward()
             cum_loss += loss
             
             optimizer.step()
-        
+
         cum_loss /= len(trainloader)
         writer.add_scalar('Loss/train', cum_loss, e)
         print(cum_loss.item())
@@ -155,7 +167,7 @@ def train() -> None:
                 pred_img, dx = render_image(rays=sample['rays'],
                                         batch_size=args.batch_size,
                                         img_shape=(args.length, args.length),
-                                        times=sample['time']
+                                        times=sample['times'],
                                         sample_num_coarse=args.sample_num_coarse,
                                         sample_num_fine=args.sample_num_fine,
                                         nerf_coarse=model_coarse,

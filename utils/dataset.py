@@ -60,7 +60,9 @@ class BlenderDataset(Dataset):
 
                 # get time of pictures
                 time=frame['time']
-                self.times+=[torch.full((h*w,),time)]
+                time=torch.full((h*w,),time)
+                time=time.unsqueeze(1)
+                self.times+=[time]
 
                 c2w = torch.FloatTensor(pose)
 
@@ -79,7 +81,6 @@ class BlenderDataset(Dataset):
                                              self.near*torch.ones_like(rays_o[:, :1]),
                                              self.far*torch.ones_like(rays_o[:, :1])],
                                              1)] # (h*w, 8)
-
             self.all_rays = torch.cat(self.all_rays, 0) # (len(self.meta['frames])*h*w, 8)
             self.all_rgbs = torch.cat(self.all_rgbs, 0) # (len(self.meta['frames])*h*w, 3)
             self.times = torch.cat(self.times, 0) 
@@ -92,34 +93,39 @@ class BlenderDataset(Dataset):
         return len(self.meta['frames'])
 
     def __getitem__(self, idx):
-        if self.split == 'train': # use data in the buffers
-            sample = {'rays': self.all_rays[idx],
-                      'rgbs': self.all_rgbs[idx],
-                      'times': self.times[idx]}
+        # if self.split == 'train': # use data in the buffers
+        #     sample = {'rays': self.all_rays[idx],
+        #               'rgbs': self.all_rgbs[idx],
+        #               'times': self.times[idx]}
 
-        else: # create data for each image separately
-            frame = self.meta['frames'][idx]
-            c2w = torch.FloatTensor(frame['transform_matrix'])[:3, :4]
-            time=frame['time']
+        # else: # create data for each image separately
+        w, h = self.img_wh
+        frame = self.meta['frames'][idx]
+        c2w = torch.FloatTensor(frame['transform_matrix'])[:3, :4]
+        time=frame['time']
+        time=torch.full((h*w,),time)
+        time=time.unsqueeze(1)
+        times=[time]
+        times = torch.cat(times, 0) 
 
-            img = Image.open(os.path.join(self.root_dir, f"{frame['file_path']}.png"))
-            img = img.resize(self.img_wh, Image.LANCZOS)
-            img = self.transform(img) # (4, H, W)
-            valid_mask = (img[-1]>0).flatten() # (H*W) valid color area
-            img = img.view(4, -1).permute(1, 0) # (H*W, 4) RGBA
-            img = img[:, :3]*img[:, -1:] + (1-img[:, -1:]) # blend A to RGB
+        img = Image.open(os.path.join(self.root_dir, f"{frame['file_path']}.png"))
+        img = img.resize(self.img_wh, Image.LANCZOS)
+        img = self.transform(img) # (4, H, W)
+        valid_mask = (img[-1]>0).flatten() # (H*W) valid color area
+        img = img.view(4, -1).permute(1, 0) # (H*W, 4) RGBA
+        img = img[:, :3]*img[:, -1:] + (1-img[:, -1:]) # blend A to RGB
 
-            rays_o, rays_d = get_p2w_ray_directions(self.directions, c2w)
+        rays_o, rays_d = get_p2w_ray_directions(self.directions, c2w)
 
-            rays = torch.cat([rays_o, rays_d, 
-                              self.near*torch.ones_like(rays_o[:, :1]),
-                              self.far*torch.ones_like(rays_o[:, :1])],
-                              1) # (H*W, 8)
+        rays = torch.cat([rays_o, rays_d, 
+                            self.near*torch.ones_like(rays_o[:, :1]),
+                            self.far*torch.ones_like(rays_o[:, :1])],
+                            1) # (H*W, 8)
 
-            sample = {'rays': rays,
-                      'rgbs': img,
-                      'c2w': c2w,
-                      'time': time,
-                      'valid_mask': valid_mask}
+        sample = {'rays': rays,
+                    'rgbs': img,
+                    'c2w': c2w,
+                    'times': times,
+                    'valid_mask': valid_mask}
 
         return sample

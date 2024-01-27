@@ -112,7 +112,7 @@ def render_rays(rays: torch.Tensor,
     deltas_coarse = torch.diff(depths_coarse, dim=1)
     deltas_coarse = torch.cat((deltas_coarse, 1e7 * torch.ones((ray_num, 1)).to(device)), dim=1)
 
-    # feed into D-NeRF
+    # feed into D-NeRF with unencoded vals
     xyz_dir_unencoded_coarse = torch.cat((xyzs_coarse,dir_coarse), dim=1)
     results_coarse, dx_coarse = nerf_coarse(xyz_dir_unencoded_coarse,times_coarse)
     
@@ -230,7 +230,7 @@ def render_image(rays: torch.Tensor,
     nerf_fine.to(device)
     
     batches = torch.split(rays, batch_size)
-    time_batches = torch.split(rays, batch_size)
+    time_batches = torch.split(times, batch_size)
     
     rgb_batches = []
     dx_batches = []
